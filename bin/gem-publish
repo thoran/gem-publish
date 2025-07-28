@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# gem-publish
+
+# 20250321
+# 0.0.0
+
+gem build *.gemspec
+gem push *.gem
+rm *.gem
