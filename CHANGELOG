@@ -1,0 +1,17 @@
+# CHANGELOG
+
+## 20260621
+
+0.1.0: Ensure everything is world readable; + README.md, CHANGELOG.
+
+1. ~ bin/gem-publish: + `chmod -R a+rX .`, so as to ensure all files are world readable before building the gem.
+2. + README.md
+3. + CHANGELOG
+
+## 20250321
+
+0.0.0: A simple shell script to build, push, and cleanup a yet to be published gem.
+
+1. Build
+2. Push
+3. Remove
