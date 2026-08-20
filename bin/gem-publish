@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 # gem-publish
 
-# 20260621
-# 0.1.0
+# 20260816
+# 0.1.1
 
 chmod -R a+rX .
 gem build *.gemspec

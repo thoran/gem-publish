@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 20260816
+
+0.1.1: Populate .gitignore, which had been committed empty.
+
+1. ~ .gitignore: the standard 47 lines. The file existed and was empty, which git-boot creates it as and nothing had since filled in.
+2. ~ bin/gem-publish: /0.1.0/0.1.1/, and the date.
+
+
 ## 20260621
 
 0.1.0: Ensure everything is world readable; + README.md, CHANGELOG.
@@ -7,6 +15,7 @@
 1. ~ bin/gem-publish: + `chmod -R a+rX .`, so as to ensure all files are world readable before building the gem.
 2. + README.md
 3. + CHANGELOG
+
 
 ## 20250321
 
