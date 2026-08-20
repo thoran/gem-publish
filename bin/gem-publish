@@ -1,10 +1,17 @@
 #!/usr/bin/env sh
 # gem-publish
 
-# 20260816
-# 0.1.1
+# 20260820
+# 0.2.0
 
 chmod -R a+rX .
-gem build *.gemspec
-gem push *.gem
+
+for gemspec in *.gemspec; do
+  gem build "$gemspec"
+done
+
+for gem in *.gem; do
+  gem push "$gem"
+done
+
 rm *.gem

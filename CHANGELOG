@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 20260820
+
+0.2.0: Build and push every gemspec in the directory.
+
+1. ~ bin/gem-publish: `gem build *.gemspec` --> a loop over *.gemspec, and `gem push *.gem` --> a loop over *.gem. Each takes one file, so a glob hands it several and it uses the first or refuses outright. webdav carries two gemspecs, publishing the same code as webdav and as webdav.rb, and only ever built the one.
+2. Where one of the two is already published, its push fails and the other still goes: rubygems refuses a repush, and nothing here stops on error.
+3. ~ bin/gem-publish: /0.1.1/0.2.0/, and the date.
+
+
 ## 20260816
 
 0.1.1: Populate .gitignore, which had been committed empty.
