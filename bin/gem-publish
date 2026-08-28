@@ -1,17 +1,41 @@
 #!/usr/bin/env sh
 # gem-publish
 
-# 20260821
-# 0.2.1
+# 20260828
+# 0.3.0
 
-chmod -R a+rX .
+built=0
+otp=''
 
-for gemspec in *.gemspec; do
-  gem build "$gemspec"
-done
+build_gems() {
+  for gemspec in *.gemspec; do
+    gem build "$gemspec" && built=$((built + 1))
+  done
+}
 
-for gem in *.gem; do
-  gem push "$gem"
-done
+read_otp() {
+  printf 'OTP code (leave blank to be asked for each gem): '
+  read otp
+}
 
-rm *.gem
+push_gems() {
+  for gem in *.gem; do
+    if [ -n "$otp" ]; then
+      gem push --otp "$otp" "$gem"
+    else
+      gem push "$gem"
+    fi
+  done
+}
+
+main() {
+  chmod -R a+rX .
+  build_gems
+  if [ "$built" -gt 1 ]; then
+    read_otp
+  fi
+  push_gems
+  rm *.gem
+}
+
+main "$@"

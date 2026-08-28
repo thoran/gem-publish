@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 20260828
+
+0.3.0: Ask for the OTP code once and use it for every push.
+
+1. ~ bin/gem-publish: + read_otp(), which asks for the multifactor code once, and push_gems(), which passes it to each `gem push` as `--otp`. With two or more gemspecs rubygems asked separately for each push, and a code entered for the first had usually expired by the time the second was wanted, so a two gemspec directory took two codes read from the authenticator a minute apart.
+2. The ask happens only where more than one gem has been built, so the single gemspec case is untouched and rubygems does its own asking there.
+3. A blank answer means no `--otp`, and rubygems asks per push as before: this is what someone without multifactor authentication wants, and the escape where the code has gone stale mid-run.
+4. ~ bin/gem-publish: + build_gems(), main(), and the count of built gems the ask is conditioned on. The body was a flat sequence, which no longer holds a conditional and a prompt comfortably.
+5. A code is good for thirty seconds either side of its window, so a directory of many gems can still outrun it; nothing here renews one mid-run.
+6. ~ bin/gem-publish: /0.2.1/0.3.0/, and the date.
+7. ~ README.md: the usage section named exactly one gemspec, which has been wrong since 0.2.0, and said nothing of the OTP prompt.
+
+
 ## 20260821
 
 0.2.1: + LICENSE, which the README has named without one being present.
