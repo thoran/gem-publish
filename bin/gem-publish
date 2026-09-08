@@ -1,15 +1,22 @@
 #!/usr/bin/env sh
 # gem-publish
 
-# 20260828
-# 0.3.0
+# 20260908
+# 0.4.0
 
 built=0
 otp=''
+here=$(pwd)
 
 build_gems() {
-  for gemspec in *.gemspec; do
-    gem build "$gemspec" && built=$((built + 1))
+  local directory
+  for directory in "$@"; do
+    cd "$directory" || continue
+    chmod -R a+rX .
+    for gemspec in *.gemspec; do
+      gem build "$gemspec" && built=$((built + 1))
+    done
+    cd "$here" || exit 1
   done
 }
 
@@ -19,23 +26,28 @@ read_otp() {
 }
 
 push_gems() {
-  for gem in *.gem; do
-    if [ -n "$otp" ]; then
-      gem push --otp "$otp" "$gem"
-    else
-      gem push "$gem"
-    fi
+  local directory
+  for directory in "$@"; do
+    cd "$directory" || continue
+    for gem in *.gem; do
+      if [ -n "$otp" ]; then
+        gem push --otp "$otp" "$gem"
+      else
+        gem push "$gem"
+      fi
+    done
+    rm *.gem
+    cd "$here" || exit 1
   done
 }
 
 main() {
-  chmod -R a+rX .
-  build_gems
+  [ "$#" -eq 0 ] && set -- .
+  build_gems "$@"
   if [ "$built" -gt 1 ]; then
     read_otp
   fi
-  push_gems
-  rm *.gem
+  push_gems "$@"
 }
 
 main "$@"

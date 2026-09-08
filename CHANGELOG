@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 20260908
+
+0.4.0: Take a list of directories, so one code covers a whole sweep.
+
+1. ~ bin/gem-publish: build_gems() and push_gems() take the directories to work in, and main() defaults them to the current one. The OTP read at 0.3.0 was per directory, so it fired only where a directory held two gemspecs; eleven directories holding one apiece got no prompt at all and rubygems asked eleven times, a code apiece read from the authenticator minutes apart. The eleven are real: the LICENSE releases of 20260821 left that many gems tagged a patch ahead of what rubygems serves.
+2. Everything is built before anything is pushed, and the ask sits between the two. Building is the slow half, so this puts the code's short life against the pushes alone rather than against the whole run.
+3. ~ bin/gem-publish: + here, the directory returned to after each, so a relative name is read against where the command was run rather than against the last directory visited.
+4. ~ bin/gem-publish: /0.3.0/0.4.0/, and the date.
+5. ~ README.md: the description and the usage and multifactor sections all spoke of one directory.
+
+
 ## 20260828
 
 0.3.0: Ask for the OTP code once and use it for every push.
