@@ -1,0 +1,5 @@
+# TODO
+
+1. gem build packages files from disk, and the gemspecs list their files with Dir globs rather than from git, so what is published needn't be what is tagged.  Since 0.5.0 a directory with uncommitted or untracked files is refused, but a clean checkout of something other than the tag still publishes.
+2. Build from the v<version> tag, the version read from the gemspec, in a temporary checkout, so what is published is exactly what is tagged and a missing tag stops it.  Bound up with the open question of more contributors and distributed development, where the tag becomes the release.
+3. Rejected: gemspecs listing their files with git ls-files, as Bundler's template does.  A tracked file with uncommitted edits would still go in edited, and it means changing every gemspec rather than one tool.

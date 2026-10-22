@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 20261022
+
+0.5.0: Refuse to publish from a directory with uncommitted or untracked files.
+
+1. ~ bin/gem-publish: + check_clean(), which stops the run, naming each directory and its files, where `git status --porcelain` reports anything or fails. `gem build` packages what is on disk, so an uncommitted edit or a stray file went out in a version which no commit or tag holds.
+2. ~ bin/gem-publish: main() calls check_clean() on every directory before anything is built, and builds and pushes nothing where any fails it, so a sweep never publishes part of its list.
+3. ~ bin/gem-publish: /0.4.0/0.5.0/, and the date.
+4. ~ README.md: + the check, in the description and under usage.
+5. + TODO: building from the tag, and the alternative rejected.
+
 ## 20260908
 
 0.4.0: Take a list of directories, so one code covers a whole sweep.

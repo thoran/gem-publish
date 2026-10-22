@@ -6,11 +6,12 @@ A simple shell script to build, push, and clean up gems in one step.
 
 Given a list of directories, or the current one where none is named, `gem-publish`:
 
-1. Makes all files readable (`chmod -R a+rX .`) in each, so nothing is left out of a build because of restrictive permissions.
-2. Builds a gem from every `*.gemspec` in each directory (`gem build`).
-3. Asks once for a multifactor authentication code, where more than one gem was built in total.
-4. Pushes each built gem to [RubyGems](https://rubygems.org) (`gem push`).
-5. Removes the local `*.gem` files left behind by the build (`rm`).
+1. Stops, building and pushing nothing, unless every directory is a git checkout with nothing uncommitted or untracked (`git status --porcelain`).
+2. Makes all files readable (`chmod -R a+rX .`) in each, so nothing is left out of a build because of restrictive permissions.
+3. Builds a gem from every `*.gemspec` in each directory (`gem build`).
+4. Asks once for a multifactor authentication code, where more than one gem was built in total.
+5. Pushes each built gem to [RubyGems](https://rubygems.org) (`gem push`).
+6. Removes the local `*.gem` files left behind by the build (`rm`).
 
 
 ## Installation
@@ -51,6 +52,21 @@ gem-publish git.rb monotonic.rb WebAccount
 Either way it expects that you're authenticated with RubyGems (see `gem signin`).
 
 Everything is built before anything is pushed, so a run which is going to fail for want of a gemspec or a permission does so before the first push rather than part way down the list.
+
+### Uncommitted changes
+
+`gem build` packages whatever is on disk, so an edit not yet committed, or a stray file a gemspec's globs pick up, would go out in a version which no commit or tag holds. So before building anything `gem-publish` checks every directory named, and where any has modified or untracked files it stops, naming them:
+
+```
+gem-publish: Nothing built or pushed. There are files that need to be committed first:
+duration.rb
+ M duration.rb.gemspec
+?? notes.txt
+```
+
+Ignored files, such as built `*.gem`s, don't count. A directory which isn't in a git repository stops it too.
+
+It's all or nothing: one dirty directory stops the whole run, clean ones included, so a sweep never publishes part of its list. Commit, stash, or remove the files and run it again.
 
 ### Multifactor authentication
 
