@@ -2,16 +2,16 @@
 
 ## Description
 
-A simple shell script to build, push, and clean up gems in one step.
+A simple Ruby script to build, push, and clean up gems in one step.
 
 Given a list of directories, or the current one where none is named, `gem-publish`:
 
 1. Stops, building and pushing nothing, unless every directory is a git checkout in which nothing its gems are built from is uncommitted or untracked (`git status --porcelain`).
 2. Makes all files readable (`chmod -R a+rX .`) in each, so nothing is left out of a build because of restrictive permissions.
-3. Builds a gem from every `*.gemspec` in each directory (`gem build`).
+3. Builds a gem from every `*.gemspec` in each directory (`Gem::Package.build`), from the same specification it checked, stopping before any push where one fails to build.
 4. Asks once for a multifactor authentication code, where more than one gem was built in total.
 5. Pushes each built gem to [RubyGems](https://rubygems.org) (`gem push`).
-6. Removes the local `*.gem` files left behind by the build (`rm`).
+6. Removes the `*.gem` files it built, leaving any others in the directory alone.
 
 
 ## Installation
@@ -51,11 +51,17 @@ gem-publish git.rb monotonic.rb WebAccount
 
 Either way it expects that you're authenticated with RubyGems (see `gem signin`).
 
-Everything is built before anything is pushed, so a run which is going to fail for want of a gemspec or a permission does so before the first push rather than part way down the list.
+Everything is built before anything is pushed, so a run which is going to fail for want of a gemspec or a permission does so before the first push rather than part way down the list. Where a gem fails to build, nothing is pushed and the gems already built are removed:
+
+```
+gem-publish: Nothing pushed. WebAccount/WebAccount.gemspec didn't build: ["lib/WebAccount/Session.rb"] are not files
+```
+
+It exits 1 where a gem fails to build or to push.
 
 ### Uncommitted changes
 
-`gem build` packages whatever is on disk, so an edit not yet committed, or a stray file a gemspec's globs pick up, would go out in a version which no commit or tag holds. So before building anything `gem-publish` loads every gemspec in each directory named and checks what it's built from: the files it lists, the gemspec itself, and any file it reads while loading, such as a version file shared across a monorepo. Where any of those is modified or untracked it stops, naming them:
+Building packages whatever is on disk, so an edit not yet committed, or a stray file a gemspec's globs pick up, would go out in a version which no commit or tag holds. So before building anything `gem-publish` loads every gemspec in each directory named and checks what it's built from: the files it lists, the gemspec itself, and any file it reads while loading, such as a version file shared across a monorepo. Where any of those is modified or untracked it stops, naming them:
 
 ```
 gem-publish: Nothing built or pushed. There are files that need to be committed first:
@@ -64,7 +70,7 @@ duration.rb
 ?? lib/Duration/Parser.rb
 ```
 
-Other files don't count: notes kept beside the code, another component of the same repository, or ignored files such as built `*.gem`s. A directory which isn't in a git repository, or which has no gemspec or one which doesn't load, stops it too.
+Other files don't count: notes kept beside the code, another component of the same repository, or ignored files such as built `*.gem`s. A directory which doesn't exist or isn't in a git repository, or which has no gemspec or one which doesn't load, stops it too.
 
 It's all or nothing: one dirty directory stops the whole run, clean ones included, so a sweep never publishes part of its list. Commit, stash, or remove the files and run it again.
 
