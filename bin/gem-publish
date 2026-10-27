@@ -1,17 +1,55 @@
 #!/usr/bin/env sh
 # gem-publish
 
-# 20261022
-# 0.5.0
+# 20261027
+# 0.5.1
 
 built=0
 otp=''
 here=$(pwd)
 
+built_from_status() {
+  ruby - <<'RUBY'
+require 'pathname'
+require 'stringio'
+gemspecs = Dir['*.gemspec']
+abort 'No gemspec.' if gemspecs.empty?
+top = `git rev-parse --show-toplevel`.chomp
+exit 1 unless $?.success?
+paths = []
+read = []
+recording = false
+IO.singleton_class.prepend(Module.new do
+  %i{binread foreach open read readlines}.each do |method_name|
+    define_method(method_name) do |path, *args, **options, &block|
+      read << File.expand_path(path) if recording && (path.is_a?(String) || path.respond_to?(:to_path))
+      super(path, *args, **options, &block)
+    end
+  end
+end)
+gemspecs.each do |gemspec|
+  features = $LOADED_FEATURES.dup
+  $stdout = $stderr = StringIO.new
+  recording = true
+  spec = Gem::Specification.load(File.expand_path(gemspec))
+  recording = false
+  output, $stdout, $stderr = $stdout.string, STDOUT, STDERR
+  abort output + "#{gemspec} didn't load." unless spec
+  paths.concat(spec.files.map{|file| File.expand_path(file)})
+  paths << File.expand_path(gemspec)
+  paths.concat($LOADED_FEATURES - features)
+end
+paths.concat(read)
+here = Pathname.pwd
+paths = paths.uniq.select{|path| path.start_with?(top + '/')}.map{|path| Pathname(path).relative_path_from(here).to_s}
+exec('git', '--literal-pathspecs', 'status', '--porcelain', '--', *paths)
+RUBY
+}
+
 check_clean() {
   local directory changes dirty=0
   for directory in "$@"; do
-    changes=$(git -C "$directory" status --porcelain 2>&1) && [ -z "$changes" ] && continue
+    changes=$(cd "$directory" 2>&1 && built_from_status 2>&1) && [ -z "$changes" ] && continue
     if [ "$dirty" -eq 0 ]; then
       echo 'gem-publish: Nothing built or pushed. There are files that need to be committed first:' >&2
       dirty=1

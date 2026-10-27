@@ -6,7 +6,7 @@ A simple shell script to build, push, and clean up gems in one step.
 
 Given a list of directories, or the current one where none is named, `gem-publish`:
 
-1. Stops, building and pushing nothing, unless every directory is a git checkout with nothing uncommitted or untracked (`git status --porcelain`).
+1. Stops, building and pushing nothing, unless every directory is a git checkout in which nothing its gems are built from is uncommitted or untracked (`git status --porcelain`).
 2. Makes all files readable (`chmod -R a+rX .`) in each, so nothing is left out of a build because of restrictive permissions.
 3. Builds a gem from every `*.gemspec` in each directory (`gem build`).
 4. Asks once for a multifactor authentication code, where more than one gem was built in total.
@@ -55,16 +55,16 @@ Everything is built before anything is pushed, so a run which is going to fail f
 
 ### Uncommitted changes
 
-`gem build` packages whatever is on disk, so an edit not yet committed, or a stray file a gemspec's globs pick up, would go out in a version which no commit or tag holds. So before building anything `gem-publish` checks every directory named, and where any has modified or untracked files it stops, naming them:
+`gem build` packages whatever is on disk, so an edit not yet committed, or a stray file a gemspec's globs pick up, would go out in a version which no commit or tag holds. So before building anything `gem-publish` loads every gemspec in each directory named and checks what it's built from: the files it lists, the gemspec itself, and any file it reads while loading, such as a version file shared across a monorepo. Where any of those is modified or untracked it stops, naming them:
 
 ```
 gem-publish: Nothing built or pushed. There are files that need to be committed first:
 duration.rb
  M duration.rb.gemspec
-?? notes.txt
+?? lib/Duration/Parser.rb
 ```
 
-Ignored files, such as built `*.gem`s, don't count. A directory which isn't in a git repository stops it too.
+Other files don't count: notes kept beside the code, another component of the same repository, or ignored files such as built `*.gem`s. A directory which isn't in a git repository, or which has no gemspec or one which doesn't load, stops it too.
 
 It's all or nothing: one dirty directory stops the whole run, clean ones included, so a sweep never publishes part of its list. Commit, stash, or remove the files and run it again.
 

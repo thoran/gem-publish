@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 20261027
+
+0.5.1: Refuse only where a file the gem is built from is uncommitted or untracked.
+
+1. ~ bin/gem-publish: + built_from_status(), which loads each *.gemspec in the directory and runs `git status --porcelain` on its files, on the gemspec itself, and on every file within the repository which it reads or requires while loading. 0.5.0 checked the whole working tree, so an untracked file which no gemspec packages, notes kept beside the code, stopped switches.rb 0.14.1 from publishing.
+2. Files read while loading count though they aren't packaged, since a version file shared across a monorepo, as Rails' RAILS_VERSION, changes the gem from outside its directory.
+3. ~ check_clean(): refuses on what built_from_status() reports, rather than on `git status --porcelain` of the whole directory, and where the directory has no gemspec or one which doesn't load.
+4. ~ bin/gem-publish: /0.5.0/0.5.1/, and the date.
+5. ~ README.md: the check, in the description and under usage.
+6. ~ TODO: 1, for what 0.5.1 checks.
+
 ## 20261022
 
 0.5.0: Refuse to publish from a directory with uncommitted or untracked files.
