@@ -1,105 +1,187 @@
-#!/usr/bin/env sh
+#!/usr/bin/env ruby
 # gem-publish
 
-# 20261027
-# 0.5.1
+# 20261028
+# 0.6.0
 
-built=0
-otp=''
-here=$(pwd)
-
-built_from_status() {
-  ruby - <<'RUBY'
+require 'fileutils'
+require 'open3'
 require 'pathname'
+require 'rubygems/package'
 require 'stringio'
-gemspecs = Dir['*.gemspec']
-abort 'No gemspec.' if gemspecs.empty?
-top = `git rev-parse --show-toplevel`.chomp
-exit 1 unless $?.success?
-paths = []
-read = []
-recording = false
-IO.singleton_class.prepend(Module.new do
+
+class BuildFailed < RuntimeError; end
+class Refused < RuntimeError; end
+
+module ReadRecorder
+  class << self
+    def recording(paths)
+      @paths = paths
+      yield
+    ensure
+      @paths = nil
+    end
+
+    def record(path)
+      @paths << File.expand_path(path) if @paths && (path.is_a?(String) || path.respond_to?(:to_path))
+    end
+  end
+
   %i{binread foreach open read readlines}.each do |method_name|
     define_method(method_name) do |path, *args, **options, &block|
-      read << File.expand_path(path) if recording && (path.is_a?(String) || path.respond_to?(:to_path))
+      ReadRecorder.record(path)
       super(path, *args, **options, &block)
     end
   end
-end)
-gemspecs.each do |gemspec|
-  features = $LOADED_FEATURES.dup
-  $stdout = $stderr = StringIO.new
-  recording = true
-  spec = Gem::Specification.load(File.expand_path(gemspec))
-  recording = false
-  output, $stdout, $stderr = $stdout.string, STDOUT, STDERR
-  abort output + "#{gemspec} didn't load." unless spec
-  paths.concat(spec.files.map{|file| File.expand_path(file)})
-  paths << File.expand_path(gemspec)
-  paths.concat($LOADED_FEATURES - features)
 end
-paths.concat(read)
-here = Pathname.pwd
-paths = paths.uniq.select{|path| path.start_with?(top + '/')}.map{|path| Pathname(path).relative_path_from(here).to_s}
-exec('git', '--literal-pathspecs', 'status', '--porcelain', '--', *paths)
-RUBY
-}
 
-check_clean() {
-  local directory changes dirty=0
-  for directory in "$@"; do
-    changes=$(cd "$directory" 2>&1 && built_from_status 2>&1) && [ -z "$changes" ] && continue
-    if [ "$dirty" -eq 0 ]; then
-      echo 'gem-publish: Nothing built or pushed. There are files that need to be committed first:' >&2
-      dirty=1
-    fi
-    printf '%s\n%s\n' "$directory" "$changes" >&2
-  done
-  [ "$dirty" -eq 0 ]
-}
+IO.singleton_class.prepend(ReadRecorder)
 
-build_gems() {
-  local directory
-  for directory in "$@"; do
-    cd "$directory" || continue
-    chmod -R a+rX .
-    for gemspec in *.gemspec; do
-      gem build "$gemspec" && built=$((built + 1))
-    done
-    cd "$here" || exit 1
-  done
-}
+def directories
+  @directories ||= ARGV.empty? ? ['.'] : ARGV
+end
 
-read_otp() {
-  printf 'OTP code (leave blank to be asked for each gem): '
-  read otp
-}
+def specifications
+  @specifications ||= {}
+end
 
-push_gems() {
-  local directory
-  for directory in "$@"; do
-    cd "$directory" || continue
-    for gem in *.gem; do
-      if [ -n "$otp" ]; then
-        gem push --otp "$otp" "$gem"
-      else
-        gem push "$gem"
-      fi
-    done
-    rm *.gem
-    cd "$here" || exit 1
-  done
-}
+def gemspecs
+  gemspecs = Dir['*.gemspec']
+  raise Refused, 'No gemspec.' if gemspecs.empty?
+  gemspecs
+end
 
-main() {
-  [ "$#" -eq 0 ] && set -- .
-  check_clean "$@" || exit 1
-  build_gems "$@"
-  if [ "$built" -gt 1 ]; then
-    read_otp
-  fi
-  push_gems "$@"
-}
+def repository_top_level
+  output, status = Open3.capture2e('git', 'rev-parse', '--show-toplevel')
+  raise Refused, output.chomp unless status.success?
+  output.chomp
+end
 
-main "$@"
+def quietly(output)
+  $stdout = $stderr = output
+  yield
+ensure
+  $stdout, $stderr = STDOUT, STDERR
+end
+
+def load_specification(gemspec, paths)
+  features = $LOADED_FEATURES.dup
+  output = StringIO.new
+  specification = quietly(output){ReadRecorder.recording(paths){Gem::Specification.load(File.expand_path(gemspec))}}
+  raise Refused, output.string + "#{gemspec} didn't load." unless specification
+  paths.concat(specification.files.map{|file| File.expand_path(file)}, [File.expand_path(gemspec)], $LOADED_FEATURES - features)
+  specification
+end
+
+def built_from(directory, gemspecs)
+  paths = []
+  specifications[directory] = gemspecs.map{|gemspec| load_specification(gemspec, paths)}
+  paths
+end
+
+def within_repository(paths, top_level)
+  here = Pathname.pwd
+  paths.uniq.select{|path| path.start_with?(top_level + '/')}.map{|path| Pathname(path).relative_path_from(here).to_s}
+end
+
+def status_of(paths)
+  output, status = Open3.capture2e('git', '--literal-pathspecs', 'status', '--porcelain', '--', *paths)
+  raise Refused, output.chomp unless status.success?
+  output.chomp
+end
+
+def changes_in(directory)
+  raise Refused, 'No such directory.' unless File.directory?(directory)
+  Dir.chdir(directory) do
+    gemspecs_here = gemspecs
+    top_level = repository_top_level
+    status_of(within_repository(built_from(directory, gemspecs_here), top_level))
+  end
+rescue Refused, SystemCallError => error
+  error.message
+end
+
+def changes
+  @changes ||= directories.to_h{|directory| [directory, changes_in(directory)]}
+end
+
+def dirty
+  @dirty ||= changes.reject{|directory, output| output.empty?}
+end
+
+def check_clean
+  return if dirty.empty?
+  $stderr.puts 'gem-publish: Nothing built or pushed. There are files that need to be committed first:'
+  dirty.each{|directory, output| $stderr.puts directory, output}
+  exit 1
+end
+
+def built_gems
+  @built_gems ||= []
+end
+
+def remove_gems
+  FileUtils.rm_f(built_gems)
+end
+
+def build_gem(directory, specification)
+  built_gems << File.join(directory, specification.file_name)
+  Dir.chdir(directory){Gem::Package.build(specification)}
+rescue StandardError => error
+  raise BuildFailed, "#{Pathname(directory).join(File.basename(specification.loaded_from))} didn't build: #{error.message}"
+end
+
+def build_gems
+  directories.each do |directory|
+    system('chmod', '-R', 'a+rX', directory)
+    specifications[directory].each{|specification| build_gem(directory, specification)}
+  end
+rescue BuildFailed => error
+  remove_gems
+  abort "gem-publish: Nothing pushed. #{error.message}"
+end
+
+def several_gems_built?
+  built_gems.size > 1
+end
+
+def otp
+  @otp ||= ''
+end
+
+def ask_for_otp
+  print 'OTP code (leave blank to be asked for each gem): '
+  $stdout.flush
+  @otp = $stdin.gets.to_s.strip
+end
+
+def otp_option
+  otp.empty? ? [] : ['--otp', otp]
+end
+
+def failed_pushes
+  @failed_pushes ||= []
+end
+
+def push_gem(gem_path)
+  failed_pushes << gem_path unless system('gem', 'push', *otp_option, File.basename(gem_path), chdir: File.dirname(gem_path))
+end
+
+def push_gems
+  built_gems.each{|gem_path| push_gem(gem_path)}
+end
+
+def all_pushed?
+  failed_pushes.empty?
+end
+
+def main
+  check_clean
+  build_gems
+  ask_for_otp if several_gems_built?
+  push_gems
+  remove_gems
+  exit 1 unless all_pushed?
+end
+
+main

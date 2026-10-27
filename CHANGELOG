@@ -1,4 +1,18 @@
-# CHANGELOG
+# gem-publish/CHANGELOG
+
+## 20261028
+
+0.6.0: Rewritten in Ruby, building each gem from the specification which was checked.
+
+1. ~ bin/gem-publish: in Ruby rather than sh, the check having become a Ruby program held in a here-document.
+2. ~ build_gem(): builds with Gem::Package.build from the Gem::Specification which check_clean() loaded, rather than `gem build` loading the gemspec again, so what is built is what was checked.
+3. ~ build_gems(): a gem which fails to build stops the run before any push, and the gems already built are removed. The sh version pushed the rest, and pushed a literal *.gem from a directory which had built nothing.
+4. ~ push_gems(), remove_gems(): push and remove only the gems the run built, rather than every *.gem in each directory.
+5. ~ main(): exits 1 where any push fails.
+6. ~ changes_in(): a directory which doesn't exist is refused with 'No such directory.'.
+7. ~ bin/gem-publish: /0.5.1/0.6.0/, and the date.
+8. ~ README.md: the description, and failed builds under usage.
+9. ~ CHANGELOG: the heading names the project.
 
 ## 20261027
 
