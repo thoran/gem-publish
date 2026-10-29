@@ -51,6 +51,14 @@ gem-publish git.rb monotonic.rb WebAccount
 
 Either way it expects that you're authenticated with RubyGems (see `gem signin`).
 
+`-h` or `--help` prints the usage and exits, checking nothing:
+
+```sh
+gem-publish --help
+```
+
+Any other argument beginning with `-` is refused, with the usage, before any directory is checked. Name a directory whose name begins with `-` as `./-name`.
+
 Everything is built before anything is pushed, so a run which is going to fail for want of a gemspec or a permission does so before the first push rather than part way down the list. Where a gem fails to build, nothing is pushed and the gems already built are removed:
 
 ```
@@ -97,6 +105,15 @@ gem-publish poloniex.rb WebAccount
 ```
 
 Naming them all again is safe but noisy — RubyGems refuses to accept a version twice, so the ones which already went through fail on the second run.
+
+
+## Testing
+
+```sh
+ruby test/gem-publish_test.rb
+```
+
+Each case runs in a temporary directory holding no gemspec, so nothing is built or pushed.
 
 
 ## Contributing

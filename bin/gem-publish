@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 # gem-publish
 
-# 20261028
-# 0.6.0
+# 20261029
+# 0.7.0
 
 require 'fileutils'
 require 'open3'
@@ -36,6 +36,37 @@ module ReadRecorder
 end
 
 IO.singleton_class.prepend(ReadRecorder)
+
+def usage(output = $stdout)
+  output.puts 'gem-publish - Build, push, and clean up gems in one step.'
+  output.puts
+  output.puts 'Usage: gem-publish [directory ...]'
+  output.puts
+  output.puts 'Builds a gem from every gemspec in each directory named, or in the current one where none is, and pushes each to RubyGems.'
+  output.puts
+  output.puts 'Options:'
+  output.puts '  -h, --help  Show this help'
+end
+
+def help?
+  ARGV.include?('-h') || ARGV.include?('--help')
+end
+
+def unknown_switches
+  ARGV.select{|argument| argument.start_with?('-')} - ['-h', '--help']
+end
+
+def check_switches
+  if help?
+    usage
+    exit
+  end
+  return if unknown_switches.empty?
+  $stderr.puts "gem-publish: Nothing built or pushed. Unknown switch: #{unknown_switches.join(' ')}"
+  $stderr.puts
+  usage($stderr)
+  exit 1
+end
 
 def directories
   @directories ||= ARGV.empty? ? ['.'] : ARGV
@@ -176,6 +207,7 @@ def all_pushed?
 end
 
 def main
+  check_switches
   check_clean
   build_gems
   ask_for_otp if several_gems_built?
