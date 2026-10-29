@@ -1,5 +1,15 @@
 # gem-publish/CHANGELOG
 
+## 20261029
+
+0.7.0: + -h and --help, and refuse any other switch, rather than taking either as a directory.
+
+1. ~ bin/gem-publish: + usage(), + help?(), + unknown_switches(), + check_switches(), which prints the usage and exits 0 on -h or --help, or exits 1 on any other argument beginning with -. Each was taken as a directory, and refused as 'No such directory.' unless one by that name existed, which would have been built from and pushed.
+2. ~ main(): calls check_switches() before check_clean().
+3. + test/gem-publish_test.rb: -h and --help exit 0 and an unknown switch exits 1, each leaving the directory as it found it, and a directory named, or the current one, still reaches the cleanliness check.
+4. ~ bin/gem-publish: /0.6.0/0.7.0/, and the date.
+5. ~ README.md: + switches under usage, + running the tests.
+
 ## 20261028
 
 0.6.0: Rewritten in Ruby, building each gem from the specification which was checked.
